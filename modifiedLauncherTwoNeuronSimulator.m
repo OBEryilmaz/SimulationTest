@@ -9,7 +9,7 @@ clc;
 %Pick the image for target selection
 pwd = 'C:\Users\omer\Desktop\cosivina';
 %randperm()
-ImageNumber=2; % randi(6); % The image has a target in the middle
+ImageNumber=1; % randi(6); % The image has a target in the middle
 ImageName=sprintf('%d.png', ImageNumber);
 targetImage = imread(ImageName);
 [SizeX, SizeY, colour]=size(targetImage);
@@ -21,7 +21,7 @@ connectionValue = -2; %Amplitude for connections can be different for each one
 historyDuration = 100;
 samplingRange = [-10, 10];
 samplingResolution = 0.05;
-tStimOn=50;
+tStimOn=100;
 
 sigmaInhY = 10;
 sigmaInhX = 10;
@@ -42,8 +42,8 @@ sim.addElement(ModifiedImageLoader('targetImage',pwd,ImageName,fieldSize,current
 
 % For tunning, input parameters can be controlled by sliders
 
-sim.addElement(SingleNodeDynamics('nodeRed', 100, -1.5, 4, 0, 0, samplingRange, samplingResolution), 'targetImage','inputForRed');
-sim.addElement(SingleNodeDynamics('nodeGreen', 100, -1.5, 4, 0, 0, samplingRange, samplingResolution), 'targetImage','inputForGreen');
+sim.addElement(SingleNodeDynamics('nodeRed', 100, -1.5, 4, 1, -0.05, samplingRange, samplingResolution), 'targetImage','inputForRed');
+sim.addElement(SingleNodeDynamics('nodeGreen', 100, -1.5, 4, 1, -0.05, samplingRange, samplingResolution), 'targetImage','inputForGreen');
 % sim.addElement(SingleNodeDynamics('nodeRed', 20, -5, 4, 0, 0, samplingRange, samplingResolution), 'stimulusRed');
 % sim.addElement(SingleNodeDynamics('nodeGreen', 20, -5, 4, 0, 0, samplingRange, samplingResolution), 'stimulusGreen');
 
