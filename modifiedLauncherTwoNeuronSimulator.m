@@ -9,7 +9,7 @@ clc;
 %Pick the image for target selection
 pwd = 'C:\Users\omer\Desktop\cosivina';
 %randperm()
-ImageNumber=2; % randi(6); % The image has a target in the middle
+ImageNumber=1; % randi(6); % The image has a target in the middle
 ImageName=sprintf('%d.png', ImageNumber);
 targetImage = imread(ImageName);
 [SizeX, SizeY, colour]=size(targetImage);
@@ -21,7 +21,7 @@ connectionValue = -2; %Amplitude for connections can be different for each one
 historyDuration = 100;
 samplingRange = [-10, 10];
 samplingResolution = 0.05;
-tStimOn=50;
+tStimOn=100;
 
 sigmaInhY = 10;
 sigmaInhX = 10;
@@ -32,7 +32,7 @@ amplitudeExc = 5;
 
 amplitudeGlobal_dd=-0.01;
 amplitudeGlobal_dv=-0.005;
-
+i=1;
 sim = Simulator();
 
 sim.addElement(BoostStimulus('stimulusRed', 5));
@@ -42,8 +42,8 @@ sim.addElement(ModifiedImageLoader('targetImage',pwd,ImageName,fieldSize,current
 
 % For tunning, input parameters can be controlled by sliders
 
-sim.addElement(SingleNodeDynamics('nodeRed', 100, -1.5, 4, 0, 0, samplingRange, samplingResolution), 'targetImage','inputForRed');
-sim.addElement(SingleNodeDynamics('nodeGreen', 100, -1.5, 4, 0, 0, samplingRange, samplingResolution), 'targetImage','inputForGreen');
+sim.addElement(SingleNodeDynamics('nodeRed', 100, -1.5, 4, 1, -0.05, samplingRange, samplingResolution), 'targetImage','inputForRed');
+sim.addElement(SingleNodeDynamics('nodeGreen', 100, -1.5, 4, 1, -0.05, samplingRange, samplingResolution), 'targetImage','inputForGreen');
 % sim.addElement(SingleNodeDynamics('nodeRed', 20, -5, 4, 0, 0, samplingRange, samplingResolution), 'stimulusRed');
 % sim.addElement(SingleNodeDynamics('nodeGreen', 20, -5, 4, 0, 0, samplingRange, samplingResolution), 'stimulusGreen');
 
@@ -66,7 +66,7 @@ sim.addElement(ModifiedConvolution('handTargetDifferenceMap', fieldSize , 1 ,0,9
 % add d field
 
 sim.addElement(NeuralField('field d', fieldSize, 20, threshold, 4),{'fixedStimuli','handTargetDifferenceMap'},{'output','output'});
-sim.addElement(NeuralField('velocityMap', fieldSize, 5, (threshold+4.8), 4));
+sim.addElement(ModifiedNeuralField('velocityMap', fieldSize, 5, (threshold+4.8), 4));
 % sim.addElement(LateralInteractions2D('d -> d', [100, 150], 5, 5, 5, 10, 10, 5, -0.05), ...
 %  'field d', 'output', 'field d', 'output');
 
@@ -107,12 +107,42 @@ sim.addElement(RunningHistory('stimulusHistoryRed', [1, 1], historyDuration, 1),
 sim.addElement(RunningHistory('stimulusHistoryGreen', [1, 1], historyDuration, 1), 'shiftedStimulusGreen');
 
 
+
+% % handUpdate
+% Coeff=1;
+% hVelocityOutput=sim.getComponent('velocityMap', 'output');
+%     [rowOfVelocity, colOfVelocity]=find(hVelocityOutput==max(max(hVelocityOutput)));
+%
+%     hHandOutput=sim.getComponent('hand', 'output');
+%     [rowOfHand, colOfHand]=find(hHandOutput==max(max(hHandOutput)));
+%
+%     hHand= sim.getElement('hand');
+%     hHand.positionX= colOfHand+round((colOfVelocity-colOfHand)*Coeff);
+%     hHand.positionY= rowOfHand+round((rowOfVelocity-rowOfHand)*Coeff);
+%hHand.init();
+%handVelocity(i,:)=sqrt(round((colOfVelocity-colOfHand)*Coeff)^2+round((rowOfVelocity-rowOfHand)*Coeff)^2);
+
 %% setting up the GUI
 elementGroups = {'nodeRed', 'nodeGreen', 'stimulusRed', 'stimulusGreen','velocityMap','d -> d','d -> v'};
 
 gui = StandardGUI(sim, [50, 50, 1020, 500], 0, [0.0, 0.0, 0.75, 1.0], [4, 3], [0.02, 0.04], ...
     [0.75, 0.0, 0.25, 1.0], [20, 2], elementGroups, elementGroups);
 
+
+
+%     velocity=sim.getComponent('VelocityMap','output');
+%
+%     if any(velocity>0.3)
+%         [rowPeakV,colPeakV]=find(velocity == max(velocity(:)));
+%         if ~iscalar(rowPeakV)
+%             rowPeakV=rowPeakV(1,1);
+%             colPeakV=colPeakV(1,1);
+%         end
+%         handPositionY=sim.getComponent('hand','positionY');
+%         handPositionX=sim.getComponent('hand','positionX');
+%         sim.setElementParameters('hand','positionY',(handPositionY+(rowPeakV-fieldSize(:,2)/2)));
+%         sim.setElementParameters('hand','positionX',(handPositionX+(rowPeakV-fieldSize(:,1)/2)));
+%     end
 
 gui.addVisualization(MultiPlot({'nodeRed', 'stimulusHistoryRed', 'historyRedNodeActivation','historyRedNodeOutput'}, {'activation', 'output','output','output'}, ...
     [1, 1, 1, 1], 'horizontal', ...
@@ -127,20 +157,23 @@ gui.addVisualization(MultiPlot({'nodeGreen', 'stimulusHistoryGreen', 'historyGre
     {'b-', 'LineWidth', 2, 'XData', 0:-1:-historyDuration+1}, {'r-', 'LineWidth', 2, 'XData', 0:-1:-historyDuration+1}},...
     'nodeGreen', 'relative time', 'activation','output'), [2, 2]);
 
-gui.addVisualization(XYPlot({[], 'nodeRed', 'nodeRed', 'nodeRed'}, ...
-    {samplingRange(1):samplingResolution:samplingRange(2), 'attractorStates', 'repellorStates', 'activation'}, ...
-    {'nodeRed', 'nodeRed', 'nodeRed', 'nodeRed'}, ...
-    {'sampledRatesOfChange', 'attractorRatesOfChange', 'repellorRatesOfChange' 'rateOfChange'}, ...
-    {'XLim', samplingRange, 'YLim', [-1, 1], 'Box', 'on', 'XGrid', 'on', 'YGrid', 'on'}, ...
-    { {'r', 'LineWidth', 2}, {'ks'}, {'kd'}, {'ro', 'MarkerFaceColor', 'r'} }, ...
-    'activation dynamics node Red', 'activation', 'rate of change'), [3, 2]);
-gui.addVisualization(XYPlot({[], 'nodeGreen', 'nodeGreen', 'nodeGreen'}, ...
-    {samplingRange(1):samplingResolution:samplingRange(2), 'attractorStates', 'repellorStates', 'activation'}, ...
-    {'nodeGreen', 'nodeGreen', 'nodeGreen', 'nodeGreen'}, ...
-    {'sampledRatesOfChange', 'attractorRatesOfChange', 'repellorRatesOfChange' 'rateOfChange'}, ...
-    {'XLim', samplingRange, 'YLim', [-1, 1], 'Box', 'on', 'XGrid', 'on', 'YGrid', 'on'}, ...
-    { {'r', 'LineWidth', 2}, {'ks'}, {'kd'}, {'ro', 'MarkerFaceColor', 'r'} }, ...
-    'activation dynamics node Green', 'activation', 'rate of change'), [4, 2]);
+%     hVmap=sim.getComponent('velocityMap', 'output');
+%     maxValueVmap=max(hVmap(:));
+%     i=i+1;
+% gui.addVisualization(XYPlot({[], 'nodeRed', 'nodeRed', 'nodeRed'}, ...
+%     {samplingRange(1):samplingResolution:samplingRange(2), 'attractorStates', 'repellorStates', 'activation'}, ...
+%     {'nodeRed', 'nodeRed', 'nodeRed', 'nodeRed'}, ...
+%     {'sampledRatesOfChange', 'attractorRatesOfChange', 'repellorRatesOfChange' 'rateOfChange'}, ...
+%     {'XLim', samplingRange, 'YLim', [-1, 1], 'Box', 'on', 'XGrid', 'on', 'YGrid', 'on'}, ...
+%     { {'r', 'LineWidth', 2}, {'ks'}, {'kd'}, {'ro', 'MarkerFaceColor', 'r'} }, ...
+%     'activation dynamics node Red', 'activation', 'rate of change'), [3, 2]);
+% gui.addVisualization(XYPlot({[], 'nodeGreen', 'nodeGreen', 'nodeGreen'}, ...
+%     {samplingRange(1):samplingResolution:samplingRange(2), 'attractorStates', 'repellorStates', 'activation'}, ...
+%     {'nodeGreen', 'nodeGreen', 'nodeGreen', 'nodeGreen'}, ...
+%     {'sampledRatesOfChange', 'attractorRatesOfChange', 'repellorRatesOfChange' 'rateOfChange'}, ...
+%     {'XLim', samplingRange, 'YLim', [-1, 1], 'Box', 'on', 'XGrid', 'on', 'YGrid', 'on'}, ...
+%     { {'r', 'LineWidth', 2}, {'ks'}, {'kd'}, {'ro', 'MarkerFaceColor', 'r'} }, ...
+%     'activation dynamics node Green', 'activation', 'rate of change'), [4, 2]);
 %'field d'
 gui.addVisualization(RGBImage('targetImage', 'image', {'XTick', [], 'YTick', []}, {},'Target Image'), [1, 1], [1, 1]);
 gui.addVisualization(ScaledImage('hand', 'output',[0, 1],{},{}, 'hand'), [2, 1],[1, 1]);
@@ -175,20 +208,20 @@ gui.addControl(ParameterSlider('stim Green', 'stimulusGreen', 'amplitude', [0, 2
     'stimulus strength for node u_2'), [12, 1]);
 
 gui.addControl(ParameterSlider('dExcAmp', 'd -> d', 'amplitudeExc', [0, 20], '%0.1f', 1, ...
-  'strength of lateral excitation in field d'), [15, 1]);
+    'strength of lateral excitation in field d'), [15, 1]);
 % gui.addControl(ParameterSlider('dInhAmp', 'd -> d', 'amplitudeInh', [0, 20], '%0.1f', 1, ...
 %   'strength of local inhibition in field d'), [14, 1]);
 gui.addControl(ParameterSlider('dInhGlobA', 'd -> d', 'amplitudeGlobal', [-0.1, 0], '%0.3f', 1, ...
-  'strength of global inhibition in field d'), [16, 1]);
+    'strength of global inhibition in field d'), [16, 1]);
 
 gui.addControl(ParameterSlider('d-vExcA', 'd -> v', 'amplitudeExc', [0, 20], '%0.1f', 1, ...
-  'strength of lateral excitation in d -> v'), [18, 1]);
+    'strength of lateral excitation in d -> v'), [18, 1]);
 
 gui.addControl(ParameterSlider('d-vInhAmp', 'd -> v', 'amplitudeInh', [0, 20], '%0.1f', 1, ...
-  'strength of lateral excitation in d -> v'), [19, 1]);
+    'strength of lateral excitation in d -> v'), [19, 1]);
 
 gui.addControl(ParameterSlider('d-vInhGlobA', 'd -> v', 'amplitudeGlobal', [-0.1, 0], '%0.3f', 1, ...
-  'strength of lateral excitation in d -> v'), [20, 1]);
+    'strength of lateral excitation in d -> v'), [20, 1]);
 
 
 
@@ -212,9 +245,34 @@ gui.addControl(GlobalControlButton('Save', gui, 'saveParameters', true, false, t
 gui.addControl(GlobalControlButton('Load', gui, 'loadParameters', true, false, true, 'load parameter settings'), [19, 2]);
 gui.addControl(GlobalControlButton('Quit', gui, 'quitSimulation', true, false, false, 'quit simulation'), [20, 2]);
 
-gui.run(inf);
+%gui.updateVisualizations();
+% gui.run(inf);
+%gui.addVisualization(TimeDisplay(),[3,2],[1,1],'control');
 
+sim.init();
+gui.init();
+tMax=300;
+rateConstant=0.05;
+isNotScalar=0;
+while ~gui.quitSimulation && sim.t < tMax
+    sim.step();
+    velocity=sim.getComponent('velocityMap','output');
+    
+    if any(velocity(:)>0.8)
+        [rowPeakV,colPeakV]=find(velocity == max(velocity(:)));
+        if ~isscalar(rowPeakV)
+            rowPeakV=rowPeakV(1,1);
+            colPeakV=colPeakV(1,1);
+            isNotScalar=1;
+        end
+        handPositionY=sim.getComponent('hand','positionY');
+        handPositionX=sim.getComponent('hand','positionX');
+        sim.setElementParameters('hand','positionY',(handPositionY+((rowPeakV-fieldSize(:,2)/2)*rateConstant)));
+        sim.setElementParameters('hand','positionX',(handPositionX+((rowPeakV-fieldSize(:,1)/2)*rateConstant)));
+    end
 
-
+    gui.updateVisualizations();
+    pause(0);
+end
 
 
