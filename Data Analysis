@@ -1,0 +1,4 @@
+These codes were used for data analysis and to visualise the results.
+Maximum deviations of the reaching trajectories were calculated.
+t-test was used to evaluate the differences in initial latencies and movement times when the target colour was changed and repeated.
+The analysis was conducted for the simlutation experiment which has the paramteres in the MainCode.m file.
